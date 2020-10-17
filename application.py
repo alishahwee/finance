@@ -70,6 +70,9 @@ def history():
 def login():
     """Log user in"""
 
+    # Clear session of current user
+    session.clear()
+
     # User reached route via POST (as by submitting a form via POST)
     if request.method == "POST":
 
@@ -156,15 +159,25 @@ def register():
         if len(rows) == 1:
             return apology("username already exists", 403)
 
-        # Create a new user in the database and redirect to login page
+        # Create a new user in the database and log them in
         else:
             db.execute(
                 "INSERT INTO users (username, hash) VALUES (:username, :hash)",
                 username=username,
                 hash=generate_password_hash(password)
             )
-            flash("Account registered. You may now login.")
-            return redirect("/login")
+
+            # Query database for username
+            rows = db.execute(
+                "SELECT * FROM users WHERE username = :username",
+                username=username,
+            )
+
+            # Remember which user has logged in
+            session["user_id"] = rows[0]["id"]
+
+            flash("You have successfully logged in.")
+            return redirect("/")
 
     else:
         return render_template("register.html")
