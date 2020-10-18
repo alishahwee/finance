@@ -142,6 +142,7 @@ def buy():
             )
 
         # Redirect to homepage
+        flash("Transaction successful.")
         return redirect("/")
 
     return render_template("buy.html")
