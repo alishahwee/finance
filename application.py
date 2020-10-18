@@ -87,8 +87,6 @@ def buy():
         shares = request.form.get("shares")
         quote = lookup(symbol)
 
-        print(quote)
-
         # Ensure a valid symbol
         if not quote:
             flash("Invalid symbol.")
@@ -298,6 +296,58 @@ def sell():
         )
 
         return render_template("sell.html", symbols=rows)
+
+    symbol = request.form.get("symbol")
+    shares = int(request.form.get("shares"))
+    quote = lookup(symbol)
+
+    # Get shares from user portfolio
+    rows = db.execute(
+        "SELECT * FROM user_shares WHERE user_id = :user_id AND symbol = :symbol",
+        user_id=session["user_id"],
+        symbol=symbol,
+    )
+
+    # Ensure sufficient shares
+    if rows[0]["shares"] < shares:
+        return apology("insufficient shares", 403)
+
+    # Deduct shares from portfolio; delete if 0
+    if rows[0]["shares"] - shares == 0:
+        db.execute(
+            "DELETE FROM user_shares WHERE user_id = :user_id AND symbol = :symbol",
+            user_id=session["user_id"],
+            symbol=symbol,
+        )
+    else:
+        db.execute(
+            "UPDATE user_shares SET shares = shares - :shares WHERE user_id = :user_id AND symbol = :symbol",
+            shares=shares,
+            user_id=session["user_id"],
+            symbol=symbol,
+            )
+
+    total = float(shares) * quote["price"]
+
+    # Add transaction to history
+    db.execute(
+        "INSERT INTO transactions (user_id, symbol, shares, price, date) VALUES (:user_id, :symbol, :shares, :price, :date)",
+        user_id=session["user_id"],
+        symbol=symbol,
+        shares=-shares,  # Define a sell by negative shares
+        price=quote["price"],
+        date=datetime.now().isoformat(" ", timespec="seconds"),
+    )
+
+    # Add sale to cash
+    db.execute(
+        "UPDATE users SET cash = cash + :total WHERE id = :user_id",
+        total=total,
+        user_id=session["user_id"],
+    )
+
+    flash("Transaction successful.")
+    return redirect("/")
 
 
 def errorhandler(e):
