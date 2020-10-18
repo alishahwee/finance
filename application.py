@@ -358,6 +358,49 @@ def sell():
     return redirect("/")
 
 
+@app.route("/change-password", methods=["GET", "POST"])
+@login_required
+def change_password():
+    """Change the user's password."""
+
+    if request.method == "POST":
+        old_pw = request.form.get("old_pw")
+        new_pw = request.form.get("new_pw")
+        confirm_new_pw = request.form.get("confirm_new_pw")
+
+        # Ensure password input and new password validation
+        if not old_pw:
+            return apology("must input password", 403)
+        elif not new_pw:
+            return apology("must input new password", 403)
+        elif new_pw != confirm_new_pw:
+            return apology("new password does not match", 403)
+
+        # Query database for password
+        rows = db.execute(
+            "SELECT * FROM users WHERE id = :id",
+            id=session["user_id"],
+        )
+
+        # Ensure password is correct
+        if not check_password_hash(
+            rows[0]["hash"], old_pw
+        ):
+            return apology("invalid password", 403)
+
+        # Update the user's password
+        db.execute(
+            "UPDATE users SET hash = :hash WHERE id = :id",
+            hash=generate_password_hash(new_pw),
+            id=session["user_id"]
+        )
+
+        flash("Your password has been updated.")
+        return redirect("/")        
+
+    return render_template("change-password.html")
+
+
 def errorhandler(e):
     """Handle error"""
     if not isinstance(e, HTTPException):
