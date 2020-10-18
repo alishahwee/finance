@@ -294,12 +294,10 @@ def sell():
         # Find stocks the user owns shares to
         rows = db.execute(
             "SELECT symbol FROM user_shares WHERE user_id = :user_id",
-            user_id=session["user_id"]
+            user_id=session["user_id"],
         )
 
         return render_template("sell.html", symbols=rows)
-
-    return apology("TODO")
 
 
 def errorhandler(e):
