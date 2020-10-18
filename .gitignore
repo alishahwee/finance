@@ -1,0 +1,6 @@
+.flaskenv
+.env
+venv
+.vscode
+__pycache__
+*.db
