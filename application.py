@@ -6,6 +6,7 @@ from flask_session import Session
 from tempfile import mkdtemp
 from werkzeug.exceptions import default_exceptions, HTTPException, InternalServerError
 from werkzeug.security import check_password_hash, generate_password_hash
+from datetime import datetime
 from dotenv import load_dotenv
 
 from helpers import apology, login_required, lookup, usd
@@ -56,7 +57,72 @@ def index():
 @login_required
 def buy():
     """Buy shares of stock"""
-    return apology("TODO")
+
+    if request.method == "POST":
+        symbol = request.form.get("symbol")
+        shares = request.form.get("shares")
+        quote = lookup(symbol)
+
+        print(quote)
+
+        # Ensure a valid symbol
+        if not quote:
+            flash("Invalid symbol.")
+            return redirect(request.url)
+
+        # Find current cash of user
+        cash = db.execute(
+            "SELECT cash FROM users WHERE id = :id", id=session["user_id"]
+        )[0]["cash"]
+
+        total = float(shares) * quote["price"]
+
+        # Ensure user has enough cash
+        if total > cash:
+            return apology("insufficient funds", 403)
+
+        # Add transaction to history
+        db.execute(
+            "INSERT INTO transactions (user_id, symbol, shares, price, date) VALUES (:user_id, :symbol, :shares, :price, :date)",
+            user_id=session["user_id"],
+            symbol=symbol,
+            shares=shares,
+            price=quote["price"],
+            date=datetime.now().isoformat(" ", timespec="seconds"),
+        )
+
+        # Deduct payment from cash
+        db.execute(
+            "UPDATE users SET cash = cash - :total WHERE id = :user_id",
+            total=total,
+            user_id=session["user_id"],
+        )
+
+        # Look if user owns shares
+        rows = db.execute(
+            "SELECT user_id FROM user_shares WHERE symbol = :symbol", symbol=symbol
+        )
+
+        # If user owns shares, update shares, else create
+        if len(rows) == 1:
+            db.execute(
+                "UPDATE user_shares SET shares = shares + :shares WHERE user_id = :user_id AND symbol = :symbol",
+                shares=shares,
+                user_id=session["user_id"],
+                symbol=symbol,
+            )
+        else:
+            db.execute(
+                "INSERT INTO user_shares (user_id, symbol, shares) VALUES (:user_id, :symbol, :shares)",
+                user_id=session["user_id"],
+                symbol=symbol,
+                shares=shares,
+            )
+
+        # Redirect to homepage
+        return redirect("/")
+
+    return render_template("buy.html")
 
 
 @app.route("/history")
@@ -175,7 +241,7 @@ def register():
             db.execute(
                 "INSERT INTO users (username, hash) VALUES (:username, :hash)",
                 username=username,
-                hash=generate_password_hash(password)
+                hash=generate_password_hash(password),
             )
 
             # Query database for username
