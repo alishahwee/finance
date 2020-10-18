@@ -61,3 +61,17 @@ def lookup(symbol):
 def usd(value):
     """Format value as USD."""
     return f"${value:,.2f}"
+
+
+class Stock:
+    """Creates a stock object."""
+
+    def __init__(self, symbol, shares):
+        self.symbol = symbol
+        self.shares = shares
+
+        quote = lookup(symbol)
+
+        self.name = quote["name"]
+        self.price = quote["price"]
+        self.total = float(shares) * self.price

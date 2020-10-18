@@ -9,7 +9,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from datetime import datetime
 from dotenv import load_dotenv
 
-from helpers import apology, login_required, lookup, usd
+from helpers import apology, login_required, lookup, usd, Stock
 
 # Load environment variables
 load_dotenv()
@@ -50,7 +50,31 @@ if not os.environ.get("API_KEY"):
 @login_required
 def index():
     """Show portfolio of stocks"""
-    return apology("TODO")
+
+    # Obtain user cash total
+    cash = db.execute("SELECT cash FROM users WHERE id = :id", id=session["user_id"])[
+        0
+    ]["cash"]
+
+    # Obtain user stock shares info
+    rows = db.execute(
+        "SELECT * FROM user_shares WHERE user_id = :user_id", user_id=session["user_id"]
+    )
+
+    if len(rows) == 0:
+        stocks = None
+    else:
+        # Create a list of stock objects
+        stocks = [Stock(row["symbol"], row["shares"]) for row in rows]
+
+        # Calculate net total
+        total = cash
+        for stock in stocks:
+            total += stock.total
+
+    return render_template(
+        "index.html", stocks=stocks, cash=cash, format=usd, total=total
+    )
 
 
 @app.route("/buy", methods=["GET", "POST"])
