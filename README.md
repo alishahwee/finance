@@ -10,5 +10,3 @@ Hello! This project was created using Flask, the CS50 library, and a few other u
 4. Dynamically generated HTML pages via template engine
 5. Password hashing and security
 6. Error handling
-
-This is my first implementation of a full-stack web application and I would like to thank CS50 and Hackbright Academy for greatly supplementing my knowledge in making this possible.
